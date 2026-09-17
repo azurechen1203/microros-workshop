@@ -1,0 +1,18 @@
+# Workshop workspaces
+workshop/ros2_ws/build/
+workshop/ros2_ws/install/
+workshop/ros2_ws/log/
+workshop/microros_ws/
+
+# Offline image export
+*.tar
+
+# Editor
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local tooling
+.claude/
