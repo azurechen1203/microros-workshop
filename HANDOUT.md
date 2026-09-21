@@ -147,6 +147,8 @@ Everything in this section runs **on your own machine**, before you enter the co
 
 ## Step 2: microROS Agent Setup
 
+> Run everything in this step **inside the container**, not on your own machine.
+
 1. Create a microROS workspace to host the setup tools
    ```bash
    cd ~/microros_workshop/microros_ws
@@ -175,6 +177,7 @@ Everything in this section runs **on your own machine**, before you enter the co
    ros2 run micro_ros_setup build_agent.sh
    source install/local_setup.bash
    ```
+   A `CMake Warning (dev)` about tinyxml2 may appear, and colcon then reports `1 package had stderr output`. This is harmless as long as you see `Finished <<< micro_ros_agent`.
 
 5. Verify the installation
    ```bash
@@ -660,7 +663,7 @@ void loop() {
 
 7. Build the workspace
    ```bash
-   cd ~/ros2_ws
+   cd ~/microros_workshop/ros2_ws
    colcon build
    source install/setup.bash
    ```
