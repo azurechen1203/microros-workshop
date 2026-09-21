@@ -10,7 +10,7 @@ WORKSPACE_DIR="${SCRIPT_DIR}/ros2_ws"
 MICROROS_DIR="${SCRIPT_DIR}/microros_ws"
 CONTAINER_WORKSPACE_DIR="/home/rosuser/microros_workshop"
 
-mkdir -p "${WORKSPACE_DIR}" "${MICROROS_DIR}"
+mkdir -p "${WORKSPACE_DIR}/src" "${MICROROS_DIR}"
 
 # Remove any stale container from a previous run so the new mount layout is applied.
 if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
