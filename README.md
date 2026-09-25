@@ -1,6 +1,6 @@
-# micro-ROS Workshop
+# micro-ROS from Zero: Hands-On with ESP32
 
-A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros.org/) on an ESP32. Please follow this file for setup before the workshop. The full step-by-step walkthrough used during the session lives in [HANDOUT.md](HANDOUT.md). 
+A ROSCon UK 2026 workshop introducing [micro-ROS](https://micro.ros.org/) on an ESP32. Please follow this file for setup before the workshop. The full step-by-step walkthrough used during the session lives in [HANDOUT.md](HANDOUT.md).
 
 ## Setup
 
@@ -26,14 +26,14 @@ A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros
    git clone https://github.com/azurechen1203/microros-workshop.git ~/microros_workshop
    cd ~/microros_workshop/workshop
    ```
-   > 📢 Clone it to exactly this path. Every command in the handout assumes `~/microros_workshop/workshop` — cloning it somewhere else means you'll have to mentally translate every copy-pasted command during the workshop.
+   > 📢 Clone it to exactly this path. Every command in the handout assumes `~/microros_workshop/workshop` so cloning it somewhere else means you'll have to manually translate every copy-pasted command during the workshop.
 
 4. Get the image
    ```bash
    docker pull azurechen1203/microros-workshop:latest
    docker tag azurechen1203/microros-workshop:latest microros-workshop:latest
    ```
-   The `tag` step matters — `run.sh` expects the image name `microros-workshop:latest`.
+   The `tag` step matters as `run.sh` expects the image name `microros-workshop:latest`.
 
    Confirm it worked:
    ```bash
@@ -42,13 +42,14 @@ A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros
    You should see `microros-workshop:latest` listed.
 
 5. Build the micro-ROS agent
-   > Run everything in this step **inside the workshop container**, started from the image pulled in step 4, not on your own machine.  
+   > Everything from **b** onwards runs **inside the workshop container** (started in **a**), not on your own machine.
 
    **a.** Start the container
       ```bash
       cd ~/microros_workshop/workshop
       ./run.sh
       ```
+      If the ESP32 isn't plugged in, you'll see `Warning: /dev/ttyACM0 not found, continuing without it.` This is expected at this stage, since the board isn't needed until the workshop.
 
    **b.** Create a micro-ROS workspace to host the setup tools
       ```bash
@@ -103,8 +104,8 @@ A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros
    > ℹ️ For Linux users, [this guide](https://dev.to/lovestaco/how-to-create-a-launcher-for-your-appimage-on-linux-mc3) can be followed to create a desktop launcher for an AppImage, enabling the addition of a desktop icon for easier access.
 
 2. Add ESP32 board support  
-   Go to: 
-   **File → Preferences → Additional Board Manager URLs**  
+   Go to:
+   **File > Preferences > Additional Board Manager URLs**  
    Add:
    ```text
    https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
@@ -112,21 +113,21 @@ A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros
 
 3. Install ESP32 board package  
    Go to:
-   **Tools → Board → Boards Manager**  
+   **Tools > Board > Boards Manager**  
    Install:
    **ESP32 by Espressif Systems**  
    Verify:
-   **Tools → Board → esp32 boards appear**
+   **Tools > Board > esp32** appears
 
-4. Install micro-ROS Arduino library:
+4. Install micro-ROS Arduino library  
    Download the precompiled micro-ROS library for Arduino IDE from [here](https://github.com/micro-ROS/micro_ros_arduino/releases)
-   > ⚠️ Pick the release tagged for **Humble** (e.g. `v2.0.8-humble`), matching the ROS2 distribution used in the workshop container. Releases for other distributions (Iron, Jazzy, Rolling, ...) won't be compatible with the agent.  
+   > ⚠️ Pick the release tagged for **Humble** (e.g. `v2.0.8-humble`), matching the ROS 2 distribution used in the workshop container. Releases for other distributions (Iron, Jazzy, Rolling, ...) won't be compatible with the agent.  
 
    Go to:
    **Sketch > Include Library > Add .ZIP Library** and select the downloaded file  
 
    Verify:
-   **File → Examples → micro_ros_arduino appears**
+   **File > Examples > micro_ros_arduino** appears
 
 > ⚠️ One-time per machine (unless you reinstall Arduino or the library). Both the ESP32 board support and the micro-ROS examples remain available afterward.
 
@@ -142,9 +143,9 @@ When the workshop starts, open [HANDOUT.md](HANDOUT.md) and continue from there.
     ├── Dockerfile
     ├── run.sh           # start the workshop container
     ├── attach.sh        # open an extra shell into it
-    ├── ros2_ws/         # ROS2 workspace, built during the workshop
+    ├── ros2_ws/         # ROS 2 workspace, built during the workshop
     ├── microros_ws/     # micro-ROS Agent workspace, built during setup, see above
-    └── firmware/        # Arduino sketches during the workshop
+    └── firmware/        # Arduino sketches written during the workshop
 ```
 
 `firmware/` won't exist right after cloning; it's created during the workshop. `ros2_ws/` is created empty by `run.sh` above and stays that way until the workshop builds it out. `microros_ws/` is both created and fully built above, before the workshop.
