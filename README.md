@@ -100,8 +100,8 @@ A ROSCon UK 2026 workshop introducing [micro-ROS](https://micro.ros.org/) on an 
 
 ### Arduino IDE
 
-1. Install the [Arduino IDE](https://support.arduino.cc/hc/en-us/articles/360019833020-Download-and-install-Arduino-IDE) (version 2, not the legacy 1.x line)
-   > ℹ️ For Linux users, [this guide](https://dev.to/lovestaco/how-to-create-a-launcher-for-your-appimage-on-linux-mc3) can be followed to create a desktop launcher for an AppImage, enabling the addition of a desktop icon for easier access.
+1. Install the [Arduino IDE](https://support.arduino.cc/hc/en-us/articles/360019833020-Download-and-install-Arduino-IDE) (version 2, not the legacy 1.x line) on the same Linux machine as Docker. The ESP32 is flashed from the IDE and then talks to the agent in the container, so both need access to the same USB port.
+   > ℹ️ The Linux download is an AppImage. [This guide](https://dev.to/lovestaco/how-to-create-a-launcher-for-your-appimage-on-linux-mc3) can be followed to create a desktop launcher for an AppImage, enabling the addition of a desktop icon for easier access.
 
 2. Add ESP32 board support  
    Go to:
