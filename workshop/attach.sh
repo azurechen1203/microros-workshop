@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Use this alongside run.sh when needed
+# Open another shell, as rosuser, in the container started by run.sh.
 
 CONTAINER_NAME="microros_workshop"
 
-exec docker exec -it "${CONTAINER_NAME}" bash
+exec docker exec -it -u rosuser "${CONTAINER_NAME}" bash
