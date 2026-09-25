@@ -1,6 +1,6 @@
 # micro-ROS Workshop Handout
 
-> Make sure you've completed the setup in [README.md](README.md) first: Docker, Arduino IDE with ESP32 board support and the micro-ROS library, the repo clone, the workshop image, and the microROS agent should all be ready before you start here.
+> Make sure you've completed the setup in [README.md](README.md) first: Docker, Arduino IDE with ESP32 board support and the micro-ROS library, the repo clone, the workshop image, and the micro-ROS agent should all be ready before you start here.
 
 ## Getting Started
 
@@ -30,7 +30,7 @@
    > ℹ️ To confirm both terminals are in the same container, run `hostname` in each, they should print the same ID.
 
 
-## First microROS Client Test
+## First micro-ROS Client Test
 
 1. Open an example file  
    Go to: 
@@ -56,13 +56,13 @@
    >
    > 1. Observe LED on the ESP32 → What does it mean?
    >
-   > 2. Verify the node and subscriber that have been set up in microROS client
+   > 2. Verify the node and subscriber that have been set up in micro-ROS client
    >    ```bash
    >    ros2 node list
    >    ros2 topic list
    >    ```
 
-6. Open the terminal #1 and run the microROS agent
+6. Open the terminal #1 and run the micro-ROS agent
    > ℹ️ The agent was already built before the workshop (see README); each new terminal just needs to source the workspace once:
    > ```bash
    > source /opt/ros/$ROS_DISTRO/setup.bash
@@ -97,7 +97,7 @@ microros_workshop/                  (what `git clone` created)
     ├── Dockerfile
     ├── run.sh
     ├── attach.sh
-    ├── firmware/                   # microROS Client — Arduino sketches
+    ├── firmware/                   # micro-ROS Client — Arduino sketches
     │   ├── exercise1/
     │   │   └── exercise1.ino
     │   └── exercise2/
@@ -108,7 +108,7 @@ microros_workshop/                  (what `git clone` created)
     │   ├── build/
     │   ├── install/
     │   └── log/
-    └── microros_ws/                # microROS Agent (built before the workshop, see README)
+    └── microros_ws/                # micro-ROS Agent (built before the workshop, see README)
 ```
 
 ## Exercise 1: LED Control (Subscriber)
@@ -151,9 +151,9 @@ microros_workshop/                  (what `git clone` created)
    ```
 
 5. Upload the code
-   > ⚠️ Remember to stop microROS agent in the terminal otherwise “serial exception error” will show up
+   > ⚠️ Remember to stop micro-ROS agent in the terminal otherwise “serial exception error” will show up
 
-6. Run the microROS agent and test it  
+6. Run the micro-ROS agent and test it  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -353,7 +353,7 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
    source install/setup.bash
    ```
 
-5. Run the microROS agent and ROS2 node  
+5. Run the micro-ROS agent and ROS2 node  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -383,7 +383,7 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
 
 4. Upload the code
 
-5. Run microROS agent and ROS2 node:  
+5. Run micro-ROS agent and ROS2 node:  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -544,7 +544,7 @@ void loop() {
 
 4. Initialise string buffer and update publisher message type in `setup()`
    ```cpp
-     // initiatialise internal string buffer
+     // initialise internal string buffer
      std_msgs__msg__String__init(&status_msg);
      status_msg.data.data = status_msg_buf;
      status_msg.data.capacity = sizeof(status_msg_buf);
@@ -584,7 +584,7 @@ void loop() {
    source install/setup.bash
    ```
 
-8. Run microROS agent and ROS2 node:  
+8. Run micro-ROS agent and ROS2 node:  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -697,7 +697,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise internal string buffer
+  // initialise internal string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -764,7 +764,7 @@ void loop() {
 
 4. Upload the code
 
-5. Run microROS agent and ROS2 node:  
+5. Run micro-ROS agent and ROS2 node:  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -882,7 +882,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise internal string buffer
+  // initialise internal string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -1037,7 +1037,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise internal string buffer
+  // initialise internal string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -1146,7 +1146,7 @@ void loop() {
 
 8. Upload the code
 
-9. Run microROS agent and ROS2 node:  
+9. Run micro-ROS agent and ROS2 node:  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -1278,7 +1278,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise string buffer
+  // initialise string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -1356,7 +1356,7 @@ void loop() {
 
 4. Upload the code
 
-5. Run microROS agent and ROS2 node:  
+5. Run micro-ROS agent and ROS2 node:  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
@@ -1489,7 +1489,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise string buffer
+  // initialise string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -1593,7 +1593,7 @@ void loop() {
 
 7. Upload the code
 
-8. Run microROS agent and ROS2 node  
+8. Run micro-ROS agent and ROS2 node  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
@@ -1712,7 +1712,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise internal string buffer
+  // initialise internal string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -1808,7 +1808,7 @@ void loop() {
 4. Upload the code
    > 🗣 Since the micro-ROS agent now connects over Wi-Fi, there's no need to stop and restart the agent when uploading code.
 
-5. Run microROS agent and ROS2 node  
+5. Run micro-ROS agent and ROS2 node  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
@@ -1964,7 +1964,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initiatialise internal string buffer
+  // initialise internal string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -2010,7 +2010,7 @@ What if we don’t have access to the reset button on the board or can’t power
 2. Open the example file: **File > Examples > micro_ros_arduino > micro-ros_reconnection_example**
 
 3. Implement reconnection logic
-   - Include microROS RMW library
+   - Include micro-ROS RMW library
      ```cpp
      #include <rmw_microros/rmw_microros.h>
      ```
@@ -2043,7 +2043,7 @@ What if we don’t have access to the reset button on the board or can’t power
      ```
    - Copy the switch case function to the `loop()`
 
-4. Run microROS agent and ROS2 node  
+4. Run micro-ROS agent and ROS2 node  
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
@@ -2195,7 +2195,7 @@ bool create_entities() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
 
-  // initiatialise internal string buffer
+  // initialise internal string buffer
   std_msgs__msg__String__init(&status_msg);
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);

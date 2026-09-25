@@ -1,8 +1,6 @@
 # micro-ROS Workshop
 
-A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros.org/) on an ESP32: publishing/subscribing over serial and Wi-Fi, debugging a microcontroller client, and handling reconnection.
-
-Please follow this file for setup before the workshop. The full step-by-step walkthrough used during the session lives in [HANDOUT.md](HANDOUT.md). 
+A hands-on workshop for ROSCon UK 2026 introducing [micro-ROS](https://micro.ros.org/) on an ESP32. Please follow this file for setup before the workshop. The full step-by-step walkthrough used during the session lives in [HANDOUT.md](HANDOUT.md). 
 
 ## Setup
 
@@ -43,8 +41,8 @@ Please follow this file for setup before the workshop. The full step-by-step wal
    ```
    You should see `microros-workshop:latest` listed.
 
-5. Build the microROS agent
-   > Run everything in this step **inside the workshop container** from step 4 above, not on your own machine.  
+5. Build the micro-ROS agent
+   > Run everything in this step **inside the workshop container**, started from the image pulled in step 4, not on your own machine.  
 
    **a.** Start the container
       ```bash
@@ -52,7 +50,7 @@ Please follow this file for setup before the workshop. The full step-by-step wal
       ./run.sh
       ```
 
-   **b.** Create a microROS workspace to host the setup tools
+   **b.** Create a micro-ROS workspace to host the setup tools
       ```bash
       cd ~/microros_ws
       git clone -b $ROS_DISTRO https://github.com/micro-ROS/micro_ros_setup.git src/micro_ros_setup
@@ -120,7 +118,7 @@ Please follow this file for setup before the workshop. The full step-by-step wal
    Verify:
    **Tools → Board → esp32 boards appear**
 
-4. Install microROS Arduino library:
+4. Install micro-ROS Arduino library:
    Download the precompiled micro-ROS library for Arduino IDE from [here](https://github.com/micro-ROS/micro_ros_arduino/releases)
    > ⚠️ Pick the release tagged for **Humble** (e.g. `v2.0.8-humble`), matching the ROS2 distribution used in the workshop container. Releases for other distributions (Iron, Jazzy, Rolling, ...) won't be compatible with the agent.  
 
@@ -145,7 +143,7 @@ When the workshop starts, open [HANDOUT.md](HANDOUT.md) and continue from there.
     ├── run.sh           # start the workshop container
     ├── attach.sh        # open an extra shell into it
     ├── ros2_ws/         # ROS2 workspace, built during the workshop
-    ├── microros_ws/     # microROS Agent workspace, built during setup, see above
+    ├── microros_ws/     # micro-ROS Agent workspace, built during setup, see above
     └── firmware/        # Arduino sketches during the workshop
 ```
 
