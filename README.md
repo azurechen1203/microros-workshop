@@ -4,7 +4,7 @@ A ROSCon UK 2026 workshop introducing [micro-ROS](https://micro.ros.org/) on an 
 
 ## Setup
 
-> This workshop is written for Linux, where Docker's USB passthrough works natively. Windows can get there too, via WSL2 and `usbipd-win`, but it takes several manual steps, and the device needs to be reattached when switching between flashing firmware from the Arduino IDE and running the micro-ROS agent inside the container. macOS doesn't currently have a reliable equivalent. If you don't have a Linux machine, contact us before the workshop.
+This workshop is written for Linux, where Docker's USB passthrough works natively. Windows can get there too, via WSL2 and `usbipd-win`, but it takes several manual steps, and the device needs to be reattached when switching between flashing firmware from the Arduino IDE and running the micro-ROS agent inside the container. macOS doesn't currently have a reliable equivalent. If you don't have a Linux machine, contact us before the workshop.
 
 ### Docker & Workshop Files
 
@@ -49,7 +49,7 @@ A ROSCon UK 2026 workshop introducing [micro-ROS](https://micro.ros.org/) on an 
       cd ~/microros_workshop/workshop
       ./run.sh
       ```
-      If the ESP32 isn't plugged in, you'll see `Warning: /dev/ttyACM0 not found, continuing without it.` This is expected at this stage, since the board isn't needed until the workshop.
+      If the ESP32 isn't plugged in, you'll see `No board found yet. You can plug it in after the container starts.` This is expected at this stage, since the board isn't needed until the workshop.
 
    **b.** Create a micro-ROS workspace to host the setup tools
       ```bash
@@ -69,10 +69,6 @@ A ROSCon UK 2026 workshop introducing [micro-ROS](https://micro.ros.org/) on an 
       ```bash
       ros2 run micro_ros_setup create_agent_ws.sh
       ```
-      This prepares a nested workspace, including:
-      - Transport layers (serial, UDP, etc.)
-      - DDS middleware integration
-      - micro_ros_agent executable
 
    **e.** Build the agent
       ```bash
