@@ -1,6 +1,7 @@
 # Workshop workspaces
 workshop/ros2_ws/
 workshop/microros_ws/
+workshop/firmware/
 
 # Offline image export
 *.tar
