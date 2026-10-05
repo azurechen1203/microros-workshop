@@ -4,116 +4,151 @@
 
 ## Getting Started
 
-1. Check ESP32's serial port on your own machine 
-   Plug in the board, then:
+1. Find the ESP32's serial port  
+      Plug in the board, then run the following command on your own machine:
    ```bash
-   ls /dev/tty*
+   ls /dev/ttyACM* /dev/ttyUSB*
    ```
-   Look for something like `/dev/ttyACM0` or `/dev/ttyUSB0`. If it's not `/dev/ttyACM0`, pass it as the first argument when you start the container in the next step.
+   You should see something like `/dev/ttyACM0`. If nothing is listed, try another USB cable, as some are charge only.
 
-2. Start the container
+   > 📢 This handout uses `/dev/ttyACM0` throughout. If yours is different, replace it in every `--dev` command, e.g. `--dev /dev/ttyUSB0`.
+
+2. Start the container (Terminal #1)
    ```bash
    cd ~/microros_workshop/workshop
-   ./run.sh                    # /dev/ttyACM0, domain 0
-   ./run.sh /dev/ttyUSB0       # different serial port
-   ./run.sh /dev/ttyACM0 17    # set domain ID to 17
+   ./run.sh
    ```
-   This mounts `ros2_ws/` and `microros_ws/` into the container, publishes the UDP port for the Wi-Fi exercises, and attaches the ESP32's serial port if found (warns and continues without it if not).
+   Your prompt changes to `rosuser@<container id>`, which means you're now inside the container.
 
-3. Second terminal, when you need one
+3. Open more terminals (Terminal #2, #3, ...)
    ```bash
    cd ~/microros_workshop/workshop
    ./attach.sh
    ```
-   Opens another shell into the same running container — useful for running the agent in one terminal while a node runs in another.
+   Each one opens another shell in the same running container.
 
-   > ℹ️ To confirm both terminals are in the same container, run `hostname` in each, they should print the same ID.
+4. Leave the container, when needed
+   ```bash
+   exit
+   ```
+   or press `Ctrl+D`
 
+### Good to Know
+
+- `run.sh` mounts `ros2_ws/` and `microros_ws/` from your machine, so your work is kept when the container stops.
+- Closing Terminal #1 or running `./run.sh` again ends the current container and closes every attached terminal. Don't panic: just run `./run.sh` again and reattach.
 
 ## First micro-ROS Client Test
 
 1. Open an example file  
-   Go to: 
-   **File > Examples > micro_ros_arduino > micro-ros_subscriber**
+   Go to: **File > Examples > micro_ros_arduino > micro-ros_subscriber**
 
-2. Configure LED pin
+2. Replace LED pin with `RGB_BUILTIN`
    ```cpp
    #define LED_PIN RGB_BUILTIN
    ```
 
-3. Add the namespace to the node
-   ```c
+3. Add the namespace to the node by filling in the empty namespace `""`
+   ```cpp
    RCCHECK(rclc_node_init_default(&node, "micro_ros_arduino_node", "hyc", &support));
    ```
-   > 📢 `hyc` is just an example (author's initials) ; replace it with your own namespace and keep it consistent across the commands below.
+   > 📢 `hyc` is just an example (author's initials). Replace it with your own namespace and keep it consistent across the commands below.
 
 4. Select board and port
    - Board: Adafruit QT Py ESP32
-   - Port: /dev/ttyACM* or similar
+   - Port: /dev/ttyACM0 (from Getting Started step 1)
 
 5. Upload the code
-   > 🔎 After uploading:
+   > 🤔 **Think:**
    >
-   > 1. Observe LED on the ESP32 → What does it mean?
+   > 1. Observe the LED on the ESP32. What does it mean?
    >
-   > 2. Verify the node and subscriber that have been set up in micro-ROS client
+   > 2. Run these in Terminal #1. Why don't the node and topic show up?
    >    ```bash
    >    ros2 node list
    >    ros2 topic list
    >    ```
 
-6. Open the terminal #1 and run the micro-ROS agent
-   > ℹ️ The agent was already built before the workshop (see README); each new terminal just needs to source the workspace once:
-   > ```bash
-   > source /opt/ros/$ROS_DISTRO/setup.bash
-   > source ~/microros_ws/install/local_setup.bash
-   > ```
+   <details>
+   <summary>Answers</summary>
+
+   1. On for 2 seconds, then fast blinking: `rclc_support_init()` failed and the board entered `error_loop()`.
+   2. The client can't join ROS 2 by itself. It needs the agent to bridge it to the ROS 2 network, and the agent isn't running yet.
+
+   </details><br>
+
+6. Source `microros_ws` and run the micro-ROS agent in Terminal #1
    ```bash
+   source ~/microros_ws/install/local_setup.bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
    > 🤔 **Think:**
    >
    > 1. Why does the LED still blink after starting the agent?
    >
-   > 2. Why are the ROS2 nodes still missing?
+   > 2. Why are the ROS 2 node and topic still missing?
 
-7. Test communication  
+   <details>
+   <summary>Answers</summary>
+
+   1. The board is stuck in `error_loop()`, which never retries. It needs a reset.
+   2. The node and subscriber are created in `setup()`, which runs once at boot. No agent was running at boot, so no session was established and nothing was created on the ROS 2 side.
+
+   </details><br>
+
+7. Reset the board by pressing the `RESET` button  
+   The agent prints lines such as `session established`, `topic created` and `subscriber created`.
+
+8. Test communication  
    Terminal #2:
    ```bash
+   ros2 node list
+   # Expected output: /hyc/micro_ros_arduino_node
+
+   ros2 topic list
+   # Expected output includes: /hyc/micro_ros_arduino_subscriber
+
    ros2 topic echo /hyc/micro_ros_arduino_subscriber
-   ```
+   ```  
+
    Terminal #3:
    ```bash
-   ros2 topic pub /hyc/micro_ros_arduino_subscriber std_msgs/msg/Int32 "data: 1"
+   # publish 0 to turn LED off and 1 to turn back on
+   ros2 topic pub --once /hyc/micro_ros_arduino_subscriber std_msgs/msg/Int32 "data: 0"
    ```
 
 ## File System Overview
 
+Create the `firmware/` folder on your machine and save every Arduino sketch there.
+```bash
+mkdir -p ~/microros_workshop/workshop/firmware
 ```
-microros_workshop/                  (what `git clone` created)
+By the end of the workshop, the folder will look like this:
+```
+~/microros_workshop/
 ├── README.md
 ├── HANDOUT.md
 └── workshop/
     ├── Dockerfile
     ├── run.sh
     ├── attach.sh
-    ├── firmware/                   # micro-ROS Client — Arduino sketches
+    ├── firmware/                   # micro-ROS client (Arduino sketches)
     │   ├── exercise1/
     │   │   └── exercise1.ino
     │   └── exercise2/
     │       └── exercise2.ino
-    ├── ros2_ws/                    # ROS2 package (built between Exercise 1 and 2)
+    ├── ros2_ws/                    # ROS 2 packages
     │   ├── src/
     │   │   └── led_demo/
     │   ├── build/
     │   ├── install/
     │   └── log/
-    └── microros_ws/                # micro-ROS Agent (built before the workshop, see README)
+    └── microros_ws/                # micro-ROS agent
 ```
 
 ## Exercise 1: LED Control (Subscriber)
 
-1. Save the file as exercise1
+1. Save the previous sketch as exercise1 in `firmware/`
 
 2. Change the error loop LED colour to red to distinguish states
    ```cpp
@@ -125,7 +160,7 @@ microros_workshop/                  (what `git clone` created)
    }
    ```
 
-3. Update the subscription callback
+3. Update the subscription callback so only 0 and 1 change the LED
    ```cpp
    void subscription_callback(const void * msgin)
    {  
@@ -141,7 +176,7 @@ microros_workshop/                  (what `git clone` created)
    }
    ```
 
-4. Update the subscriber topic
+4. Update the subscriber topic to `led_control`
    ```cpp
      RCCHECK(rclc_subscription_init_default(
        &subscriber,
@@ -149,27 +184,30 @@ microros_workshop/                  (what `git clone` created)
        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
        "led_control"));
    ```
+   Keep it a relative name (no leading `/`), so the node namespace is added to it.
 
 5. Upload the code
-   > ⚠️ Remember to stop micro-ROS agent in the terminal otherwise “serial exception error” will show up
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
+   
+   The LED turns red: no agent is running, so the board is in `error_loop()`.
 
 6. Run the micro-ROS agent and test it  
-   Terminal #1:
+   Terminal #1, then press the `RESET` button:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
    Terminal #2:
    ```bash
-   ros2 topic pub /hyc/led_control std_msgs/msg/Int32 "data: 1"
+   # publish 0 to turn LED off and 1 to turn back on
+   ros2 topic pub --once /hyc/led_control std_msgs/msg/Int32 "data: 0"
    ```
-   > 📢 `data: 1` turns the LED on, `data: 0` turns it off. Ctrl+C to stop publishing.
 
-> 🤔 It’s kind of annoying to stop the agent and re-run it again and hit the reset button
+> 🤔 Stopping the agent and pressing reset after every upload gets tedious. Exercise 10 will have these covered.
 
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 
 #include <stdio.h>
@@ -250,11 +288,11 @@ void loop() {
 
 </details>
 
-## Create the ROS2 Test Node
+## Create the ROS 2 Test Node
 
-With the firmware confirmed working in Exercise 1, build a small ROS2 node so you don't need to type raw `ros2 topic pub`/`echo` commands for the rest of the workshop.
+With the firmware confirmed working in Exercise 1, keep Terminal #1 for the micro-ROS agent. Build a small ROS 2 node in Terminal #2 so you don't need to type raw `ros2 topic pub`/`echo` commands for the rest of the workshop.
 
-1. Create a ROS2 package `led_demo`
+1. Create a ROS 2 package `led_demo`
    ```bash
    cd ~/ros2_ws/src
    ros2 pkg create led_demo --build-type ament_python
@@ -263,10 +301,9 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
 2. Create a script
    ```bash
    cd ~/ros2_ws/src/led_demo/led_demo
-   touch led_control.py
    nano led_control.py
    ```
-   `led_control.py`, remember to set your own namespace
+   Paste the code below and replace `hyc` with your own namespace.
    ```python
    import rclpy
    from rclpy.node import Node
@@ -337,7 +374,7 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
    cd ~/ros2_ws/src/led_demo
    nano setup.py
    ```
-   `setup.py`, add the following line to `entry_points`
+   In `entry_points`, add the `led_control` line so it looks like this:
    ```python
    entry_points={
        'console_scripts': [
@@ -353,8 +390,8 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
    source install/setup.bash
    ```
 
-5. Run the micro-ROS agent and ROS2 node  
-   Terminal #1:
+5. Run the ROS 2 node  
+   Terminal #1, only if the agent was stopped (start it, then press `RESET`):
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
@@ -362,35 +399,34 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
    ```bash
    ros2 run led_demo led_control
    ```
+   Enter `0` or `1` to switch the LED. Status shows `None` until Exercise 2 adds the publisher.
 
 ## Exercise 2: Monitor LED Status (Publisher)
 
-1. Save the file as exercise2
+1. Save exercise1 as exercise2 in `firmware/`
 
-2. Open the example file: **File > Examples > micro_ros_arduino > micro-ros_publisher**
+2. Open the example file for reference: **File > Examples > micro_ros_arduino > micro-ros_publisher**
 
-3. Copy required publisher and timer structure. Here are some hints:
-   - Declaration for both publisher and message variable (e.g. `status_msg`)
-   - Define `timer_callback()`.
-     - Read the status of LED
-       ```cpp
-       status_msg.data = (digitalRead(LED_PIN) == HIGH) ? 1 : 0;
-       ```
-     - Remember to change message variable in `rcl_publish` to what has been set in the declaration (e.g. `status_msg`).
-   - Create publisher with topic named `led_status`
-   - Create timer
-   - Create executor and remember to increase the number of executor in `rclc_executor_init`
+3. Copy the publisher and timer parts. Here are some hints:
+   - Declare `rcl_publisher_t publisher;` and `std_msgs__msg__Int32 status_msg;` (`timer` already exists)
+   - Copy `timer_callback()` and remove `msg.data++`. Read the LED first, then publish `status_msg` instead of `msg`:
+     ```cpp
+     status_msg.data = (digitalRead(LED_PIN) == HIGH) ? 1 : 0;
+     ```
+   - In `setup()`, after the subscriber, create the publisher on `led_status`
+   - After the publisher, create the timer
+   - Change the number of executor handles from 1 to 2 in `rclc_executor_init`
+   - Add the timer to the executor with `rclc_executor_add_timer()`
 
 4. Upload the code
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
 
-5. Run micro-ROS agent and ROS2 node:  
-   Terminal #1:
+5. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, then press the `RESET` button:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
-   > 📢 Remember to reset the board
-
-   Terminal #2:
+   Terminal #2, if `led_control` isn't still running:
    ```bash
    ros2 run led_demo led_control
    ```
@@ -398,6 +434,7 @@ With the firmware confirmed working in Exercise 1, build a small ROS2 node so yo
    ```bash
    ros2 topic echo /hyc/led_status
    ```
+   The status updates every second. Switch the LED in Terminal #2 and watch it change.
 
 <details>
 <summary>Solution</summary>
@@ -584,14 +621,14 @@ void loop() {
    source install/setup.bash
    ```
 
-8. Run micro-ROS agent and ROS2 node:  
+8. Run the micro-ROS agent, then press the `RESET` button 
    Terminal #1:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
    > 📢 Remember to reset the board
 
-   Terminal #2:
+   Terminal #2, if `led_control` isn't still running:
    ```bash
    ros2 run led_demo led_control
    ```
@@ -599,6 +636,7 @@ void loop() {
    ```bash
    ros2 topic echo /hyc/led_status
    ```
+   The status updates every second. Switch the LED in Terminal #2 and watch it change.
 
 <details>
 <summary>Solution</summary>
@@ -1337,7 +1375,7 @@ void loop() {
 
 2. Set `ROS_DOMAIN_ID`
    ```bash
-   ./run.sh /dev/ttyACM0 17   # domain 17
+   ./run.sh 17   # domain 17
    ```
    > ℹ️ If you're not using this workshop's Docker container, set `ROS_DOMAIN_ID` via your own shell by `export ROS_DOMAIN_ID=17`.
 
