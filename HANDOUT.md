@@ -549,14 +549,14 @@ void loop() {
 
 ## Exercise 3: Work with Strings
 
-1. Save the file as exercise3
+1. Save exercise2 as exercise3 in `firmware/`
 
-2. Change message type by:
+2. Change the publisher message `status_msg` from Int32 to String (the subscriber `msg` stays Int32)  
    Add library
    ```cpp
    #include <std_msgs/msg/string.h>
    ```
-   Change the message type to string and declare the buffer size
+   Replace `std_msgs__msg__Int32 status_msg;` with a String message and a buffer
    ```cpp
    std_msgs__msg__String status_msg;
    char status_msg_buf[4];
@@ -569,7 +569,7 @@ void loop() {
      RCLC_UNUSED(last_call_time);
      if (timer != NULL) {
 
-       int led_state = digitalRead(RGB_BUILTIN);
+       int led_state = digitalRead(LED_PIN);
        const char* s = (led_state == HIGH) ? "on" : "off";
        strcpy(status_msg.data.data, s);
        status_msg.data.size = strlen(s);  
@@ -579,10 +579,9 @@ void loop() {
    }
    ```
 
-4. Initialise string buffer and update publisher message type in `setup()`
+4. In `setup()`, set up the string buffer before the publisher and change the publisher type to String
    ```cpp
-     // initialise internal string buffer
-     std_msgs__msg__String__init(&status_msg);
+     // store the string in status_msg_buf
      status_msg.data.data = status_msg_buf;
      status_msg.data.capacity = sizeof(status_msg_buf);
      status_msg.data.size = 0;
@@ -596,47 +595,53 @@ void loop() {
    ```
 
 5. Upload the code
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
 
-6. Update ROS2 node `led_control.py`
+6. Update the ROS 2 node to subscribe to String  
+   In Terminal #2:
+   ```bash
+   nano ~/ros2_ws/src/led_demo/led_demo/led_control.py
+   ```
+   Add `String` below the `Int32` import:
    ```python
-     from std_msgs.msg import String
+   from std_msgs.msg import String
+   ```
+   Change the subscription and callback from `Int32` to `String`:
+   ```python
+       def __init__(self):
+           super().__init__('led_controller', namespace='hyc')
 
+           self.publisher_ = self.create_publisher(Int32, 'led_control', 10)
+           self.subscriber_ = self.create_subscription(String, 'led_status', self.status_callback, 1)
+           self.latest_status = None
+           self.cmd_labels = {0: 'off', 1: 'on'}
 
-     def __init__(self):
-         super().__init__('led_controller', namespace='hyc')
-
-         self.publisher_ = self.create_publisher(Int32, 'led_control', 10)
-         self.subscriber_ = self.create_subscription(String, 'led_status', self.status_callback, 1)
-         self.latest_status = None
-         self.cmd_labels = {0: 'off', 1: 'on'}
-
-     def status_callback(self, msg: String):
-         self.latest_status = msg.data
+       def status_callback(self, msg: String):
+           self.latest_status = msg.data
    ```
 
-7. Build the workspace
+7. Build the workspace  
+   Terminal #2:
    ```bash
    cd ~/ros2_ws
    colcon build
    source install/setup.bash
    ```
 
-8. Run the micro-ROS agent, then press the `RESET` button 
-   Terminal #1:
+8. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, then press the `RESET` button:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
-   > 📢 Remember to reset the board
-
-   Terminal #2, if `led_control` isn't still running:
+   Terminal #2:
    ```bash
    ros2 run led_demo led_control
    ```
-   Terminal #3:
+   Terminal #3, stop the previous `ros2 topic echo` with `Ctrl+C` (it is still subscribed as Int32), then start it again:
    ```bash
    ros2 topic echo /hyc/led_status
    ```
-   The status updates every second. Switch the LED in Terminal #2 and watch it change.
+   The status now shows `data: on` or `data: off`. Switch the LED in Terminal #2 and choose `2` to see the same text.
 
 <details>
 <summary>Solution</summary>
@@ -667,16 +672,8 @@ char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -702,7 +699,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -735,8 +732,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise internal string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -787,7 +783,7 @@ void loop() {
      RCLC_UNUSED(last_call_time);
      if (timer != NULL) {
 
-       int led_state = digitalRead(RGB_BUILTIN);
+       int led_state = digitalRead(LED_PIN);
        const char* s = (led_state == HIGH) ? "on" : "off";
        strcpy(status_msg.data.data, s);
        status_msg.data.size = strlen(s);
@@ -846,16 +842,8 @@ char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -881,7 +869,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -920,8 +908,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise internal string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1001,16 +988,8 @@ char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -1036,7 +1015,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -1075,8 +1054,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise internal string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1146,7 +1124,7 @@ void loop() {
      RCLC_UNUSED(last_call_time);
      if (timer != NULL) {
 
-       int led_state = digitalRead(RGB_BUILTIN);
+       int led_state = digitalRead(LED_PIN);
        const char* s = (led_state == HIGH) ? "on" : "off";
        strcpy(status_msg.data.data, s);
        status_msg.data.size = strlen(s);
@@ -1236,16 +1214,8 @@ char log_msg_buf[64];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -1271,7 +1241,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -1316,8 +1286,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1444,16 +1413,8 @@ char log_msg_buf[64];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -1479,7 +1440,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -1527,8 +1488,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1673,16 +1633,8 @@ char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -1708,7 +1660,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -1750,8 +1702,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise internal string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1886,16 +1837,8 @@ char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
 
-#define RCCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) { error_loop(); } \
-  }
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
 
 void error_loop() {
@@ -1921,7 +1864,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
     
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);  
@@ -2002,8 +1945,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
   
-  // initialise internal string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -2122,11 +2064,7 @@ std_msgs__msg__String status_msg;
 char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
-#define RCSOFTCHECK(fn) \
-  { \
-    rcl_ret_t temp_rc = fn; \
-    if ((temp_rc != RCL_RET_OK)) {} \
-  }
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){return false;}}
 
 #define EXECUTE_EVERY_N_MS(MS, X) \
@@ -2169,7 +2107,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
 
-    int led_state = digitalRead(RGB_BUILTIN);
+    int led_state = digitalRead(LED_PIN);
     const char *s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);
@@ -2233,8 +2171,7 @@ bool create_entities() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
 
-  // initialise internal string buffer
-  std_msgs__msg__String__init(&status_msg);
+  // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
