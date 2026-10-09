@@ -524,7 +524,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_status"));
     
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -744,7 +744,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -770,7 +770,7 @@ void loop() {
 
 ## Exercise 4: Debugging - Serial Output
 
-1. Save the file as exercise4
+1. Save exercise3 as exercise4 in `firmware/`
 
 2. Initialise serial data transmission in `setup()`
    ```cpp
@@ -797,26 +797,34 @@ void loop() {
    ```
 
 4. Upload the code
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
 
-5. Run micro-ROS agent and ROS2 node:  
-   Terminal #1:
+5. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, then press the `RESET` button:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
-   > 📢 Remember to reset the board
-
    Terminal #2:
    ```bash
    ros2 run led_demo led_control
    ```
 
-6. Open the serial monitor from Arduino IDE and set the baud rate to 115200
-   > 🔍 What is being printing?
+6. Open the serial monitor in the Arduino IDE and set the baud rate to 115200
+   > 🤔 **Think:** What is printed? Does the LED still respond in Terminal #2?
+
+   <details>
+   <summary>Answers</summary>
+
+   The monitor shows unreadable characters mixed with `timer: LED is on`, and the LED may respond late or not at all. This is because the micro-ROS agent and the serial monitor are both reading the same port. The monitor picks up micro-ROS messages, which are binary and show as `�`, and the agent misses them.
+
+   </details><br>
+
+7. Close the serial monitor
 
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 
 #include <stdio.h>
@@ -920,7 +928,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -1066,7 +1074,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -1314,7 +1322,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
     "rosout"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -1516,7 +1524,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
     "rosout"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -1714,7 +1722,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -1957,7 +1965,7 @@ void setup() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
@@ -2183,7 +2191,7 @@ bool create_entities() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
 
-  // create timer,
+  // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
     &timer,
