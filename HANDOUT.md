@@ -205,7 +205,7 @@ By the end of the workshop, the folder will look like this:
 > 🤔 Stopping the agent and pressing reset after every upload gets tedious. Exercise 10 will have these covered.
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> with your namespace)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -437,7 +437,7 @@ With the firmware confirmed working in Exercise 1, keep Terminal #1 for the micr
    The status updates every second. Switch the LED in Terminal #2 and watch it change.
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> with your namespace)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -644,7 +644,7 @@ void loop() {
    The status now shows `data: on` or `data: off`. Switch the LED in Terminal #2 and choose `2` to see the same text.
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> with your namespace)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -822,7 +822,7 @@ void loop() {
 7. Close the serial monitor
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> with your namespace)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -972,7 +972,7 @@ If you have a USB-UART adapter, you can print debug messages on a second serial 
 4. Select the adapter's port in the Arduino IDE, open the serial monitor and set the baud rate to 115200
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> with your namespace)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -1200,7 +1200,7 @@ void loop() {
     </details><br>
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> with your namespace)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -1359,46 +1359,70 @@ void loop() {
 
 ## Exercise 7: Domain ID Isolation
 
-1. Save the file as exercise7
+Nodes only see other nodes with the same domain ID, which keeps groups on a shared network apart.
 
-2. Set `ROS_DOMAIN_ID`
-   ```bash
-   ./run.sh 17   # domain 17
-   ```
-   > ℹ️ If you're not using this workshop's Docker container, set `ROS_DOMAIN_ID` via your own shell by `export ROS_DOMAIN_ID=17`.
+1. Save exercise6 as exercise7 in `firmware/`
 
-   Verify the domain ID is correctly set in a new terminal or container
-   ```bash
-   echo $ROS_DOMAIN_ID
-   ```
-
-3. Replace `RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));` with:
+2. Replace `RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));` with:
    ```cpp
    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
    RCCHECK(rcl_init_options_init(&init_options, allocator));
-   RCCHECK(rcl_init_options_set_domain_id(&init_options, 17));
+   RCCHECK(rcl_init_options_set_domain_id(&init_options, <your ID>));
    RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
    ```
 
-4. Upload the code
+   > 📢 Replace `<your ID>` with the ID you were given with your board, and use the same ID in the commands below.
 
-5. Run micro-ROS agent and ROS2 node:  
+   The ESP32 doesn't read `ROS_DOMAIN_ID`. Its domain is set in code and the agent creates its node in that domain.
+
+3. Upload the code
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
+
+4. Restart the container with your domain ID  
    Terminal #1:
    ```bash
+   exit
+   ./run.sh <your ID>
+   ```
+   This closes Terminals #2 and #3. Reopen them with `./attach.sh`, then check the domain ID:
+   ```bash
+   echo $ROS_DOMAIN_ID
+   # Expected output: your ID
+   ```
+   > ℹ️ If you're not using this workshop's Docker container, set `ROS_DOMAIN_ID` via your own shell by `export ROS_DOMAIN_ID=<your ID>`.
+
+5. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, then press the `RESET` button:
+   ```bash
+   source ~/microros_ws/install/local_setup.bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
    Terminal #2:
    ```bash
+   source ~/ros2_ws/install/setup.bash
    ros2 run led_demo led_control
    ```
    Terminal #3:
    ```bash
    ros2 node list
-   ros2 topic list
+   # Expected output: /hyc/led_controller and /hyc/micro_ros_arduino_node
    ```
 
+6. List the nodes on domain 0 in Terminal #3 (`ROS_DOMAIN_ID=0` applies to this command only)
+   ```bash
+   ROS_DOMAIN_ID=0 ros2 node list
+   ```
+   > 🤔 **Think:** Why is the list empty?
+
+   <details>
+   <summary>Answers</summary>
+
+   The ESP32 and `led_controller` are on your domain ID. Nodes only discover other nodes with the same domain ID, so domain 0 sees nothing.
+
+   </details><br>
+
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -1604,7 +1628,7 @@ void loop() {
    ```cpp
    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
    RCCHECK(rcl_init_options_init(&init_options, allocator));
-   RCCHECK(rcl_init_options_set_domain_id(&init_options, 17));
+   RCCHECK(rcl_init_options_set_domain_id(&init_options, <your ID>));
    RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
    ```
 
@@ -1623,7 +1647,7 @@ void loop() {
 9. Open the serial monitor from Arduino IDE and set the baud rate to 115200
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -1827,7 +1851,7 @@ void loop() {
    ```
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
@@ -2053,7 +2077,7 @@ What if we don’t have access to the reset button on the board or can’t power
    ```
 
 <details>
-<summary>Solution</summary>
+<summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
 
 ```cpp
 #include <micro_ros_arduino.h>
