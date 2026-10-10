@@ -954,23 +954,27 @@ void loop() {
 
 ## Exercise 5: Debugging - Serial Output 2
 
-```cpp
-void setup() {
-	Serial.begin(115200);
-  Serial1.begin(115200, SERIAL_8N1, 7, 32);
-}
-```
+If you have a USB-UART adapter, you can print debug messages on a second serial port while micro-ROS uses USB.
 
-Usage:
+1. Connect adapter `RX` to board `TX`, and adapter `GND` to board `GND`
 
-```cpp
-Serial1.print("LED status ")
-```
+2. Initialise `Serial1` in `setup()` (RX on pin 7, TX on pin 32; only TX is used here)
+   ```cpp
+   Serial1.begin(115200, SERIAL_8N1, 7, 32);
+   ```
+
+3. Print with `Serial1` instead of `Serial`
+   ```cpp
+   Serial1.print("timer: LED is ");
+   Serial1.println(s);
+   ```
+
+4. Select the adapter's port in the Arduino IDE, open the serial monitor and set the baud rate to 115200
 
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 
 #include <stdio.h>
@@ -1147,7 +1151,7 @@ void loop() {
    ```
 
 6. Initialise log message buffers in `setup()`
-   ```c
+   ```cpp
    // initialize log message buffers
    rcl_interfaces__msg__Log__init(&msgLog);
    msgLog.name.data = log_name_buf;
@@ -1159,7 +1163,7 @@ void loop() {
    ```
 
 7. Create a publisher
-   ```c
+   ```cpp
    // create publisher for logging
    RCCHECK(rclc_publisher_init_default(
      &publisher_log,
@@ -1190,7 +1194,7 @@ void loop() {
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 #include <rcl_interfaces/msg/log.h>
 
@@ -1362,7 +1366,7 @@ void loop() {
    ```
 
 3. Replace `RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));` with:
-   ```c
+   ```cpp
    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
    RCCHECK(rcl_init_options_init(&init_options, allocator));
    RCCHECK(rcl_init_options_set_domain_id(&init_options, 17));
@@ -1389,7 +1393,7 @@ void loop() {
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 #include <rcl_interfaces/msg/log.h>
 
@@ -1590,7 +1594,7 @@ void loop() {
 
 6. Set domain ID (the same as previous exercise)
    Replace `RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));` with:
-   ```c
+   ```cpp
    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
    RCCHECK(rcl_init_options_init(&init_options, allocator));
    RCCHECK(rcl_init_options_set_domain_id(&init_options, 17));
@@ -1614,7 +1618,7 @@ void loop() {
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 #include "secrets.h"
 
@@ -1818,7 +1822,7 @@ void loop() {
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 #include "secrets.h"
 
@@ -2006,13 +2010,13 @@ What if we don’t have access to the reset button on the board or can’t power
    - Add enum state
    - Create `create_entities()` and replace the content with those used to be in the setup. Remember to keep `return true;` in the end
    - Right after `rclc_support_init_with_options()` inside `create_entities()`, add the following line
-     ```c
+     ```cpp
        // free init_options heap alloc now that support has copied what it needs
        // prevents a leak on every reconnect
        RCCHECK(rcl_init_options_fini(&init_options));
      ```
    - Create `destroy_entities()` and replace the content with those entities that have been created
-     ```c
+     ```cpp
      void destroy_entities() {
        rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
        (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
@@ -2044,7 +2048,7 @@ What if we don’t have access to the reset button on the board or can’t power
 <details>
 <summary>Solution</summary>
 
-```c
+```cpp
 #include <micro_ros_arduino.h>
 #include "secrets.h"
 
