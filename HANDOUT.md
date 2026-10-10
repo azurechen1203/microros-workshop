@@ -552,7 +552,7 @@ void loop() {
 1. Save exercise2 as exercise3 in `firmware/`
 
 2. Change the publisher message `status_msg` from Int32 to String (the subscriber `msg` stays Int32)  
-   Add library
+   Include the `String` message type
    ```cpp
    #include <std_msgs/msg/string.h>
    ```
@@ -1041,7 +1041,6 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
 
 void setup() {
 
-  Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, 7, 32);
 
   set_microros_transports();
@@ -1104,22 +1103,22 @@ void loop() {
 
 ## Exercise 6: Debugging - ROS Logs
 
-1. Open file exercise3 and save the file as exercise6
+1. Save exercise3 as exercise6 in `firmware/` (because exercise3 has no `Serial.print`)
 
-2. Include logging library
+2. Include the `Log` message type
    ```cpp
    #include <rcl_interfaces/msg/log.h>
    ```
 
-3. Declare log publisher, message type and message buffer
+3. Declare the log publisher, message and buffers
    ```cpp
    rcl_publisher_t publisher_log;
    rcl_interfaces__msg__Log msgLog;
-   char log_name_buf[16] = "ESP32";
+   char log_name_buf[32] = "hyc.micro_ros_arduino_node";
    char log_msg_buf[64];
    ```
 
-4. Create log helper function
+4. Create the log helper function above `timer_callback()`
    ```cpp
    void publish_log(uint8_t level, const char* text) {
      msgLog.level = level;
@@ -1150,9 +1149,9 @@ void loop() {
    }
    ```
 
-6. Initialise log message buffers in `setup()`
+6. Initialise the log message in `setup()`, after the `led_status` publisher
    ```cpp
-   // initialize log message buffers
+   // initialize log message
    rcl_interfaces__msg__Log__init(&msgLog);
    msgLog.name.data = log_name_buf;
    msgLog.name.size = strlen(log_name_buf);
@@ -1162,20 +1161,21 @@ void loop() {
    msgLog.msg.capacity = sizeof(log_msg_buf);
    ```
 
-7. Create a publisher
+7. Create the log publisher after it
    ```cpp
    // create publisher for logging
    RCCHECK(rclc_publisher_init_default(
      &publisher_log,
      &node,
      ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
-     "rosout"));
+     "/rosout"));
    ```
 
 8. Upload the code
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
 
-9. Run micro-ROS agent and ROS2 node:  
-   Terminal #1:
+9. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, then press the `RESET` button:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
@@ -1185,11 +1185,19 @@ void loop() {
    ```
    Terminal #3:
    ```bash
-   # Log level: 10(DEBUG), 20(INFO), and 30(WARN)
-   ros2 topic echo /hyc/rosout
+   ros2 topic echo /rosout
    ```
+   The `stamp` is 0 because the ESP32 clock is not synchronised. If required, see **File > Examples > micro_ros_arduino > micro-ros_time_sync** to sync it with the agent's host.
 
-> 🤔 What if connection fails, there’s no way to debug as ROS2 is unable to read /rosout topic
+10. Stop the micro-ROS agent in Terminal #1 with `Ctrl+C`
+    > 🤔 **Think:** What happens in Terminal #3? How is this different from `Serial.print` in Exercise 4?
+
+    <details>
+    <summary>Answers</summary>
+
+    The ESP32 logs stop, while `led_controller` logs still appear when you send a command. The ESP32 logs reach ROS 2 only through the micro-ROS agent, so if the agent fails, the bug can't be seen. `Serial.print` does not depend on the agent, so it still works.
+
+    </details><br>
 
 <details>
 <summary>Solution</summary>
@@ -1221,14 +1229,13 @@ char status_msg_buf[4];
 
 rcl_publisher_t publisher_log;
 rcl_interfaces__msg__Log msgLog;
-char log_name_buf[16] = "ESP32";
+char log_name_buf[32] = "hyc.micro_ros_arduino_node";
 char log_msg_buf[64];
 
 #define LED_PIN RGB_BUILTIN
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
-
 
 void error_loop() {
   while (1) {
@@ -1249,6 +1256,14 @@ void subscription_callback(const void *msgin) {
   }
 }
 
+void publish_log(uint8_t level, const char* text) {
+  msgLog.level = level;
+  strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
+  msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
+  msgLog.msg.size = strlen(msgLog.msg.data);
+  RCSOFTCHECK(rcl_publish(&publisher_log, &msgLog, NULL));
+}
+
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
@@ -1265,14 +1280,6 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
     publish_log(rcl_interfaces__msg__Log__INFO, log_text);
 
   }
-}
-
-void publish_log(uint8_t level, const char* text) {
-  msgLog.level = level;
-  strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
-  msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
-  msgLog.msg.size = strlen(msgLog.msg.data);
-  RCSOFTCHECK(rcl_publish(&publisher_log, &msgLog, NULL));
 }
 
 void setup() {
@@ -1303,7 +1310,14 @@ void setup() {
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
 
-  // initialize log message buffers
+  // create publisher
+  RCCHECK(rclc_publisher_init_default(
+    &publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
+    "led_status"));
+  
+  // initialize log message
   rcl_interfaces__msg__Log__init(&msgLog);
   msgLog.name.data = log_name_buf;
   msgLog.name.size = strlen(log_name_buf);
@@ -1312,19 +1326,12 @@ void setup() {
   msgLog.msg.size = 0;
   msgLog.msg.capacity = sizeof(log_msg_buf);
 
-  // create publisher
-  RCCHECK(rclc_publisher_init_default(
-    &publisher,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-    "led_status"));
-  
   // create publisher for logging
   RCCHECK(rclc_publisher_init_default(
     &publisher_log,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
-    "rosout"));
+    "/rosout"));
 
   // create timer
   const unsigned int timer_timeout = 1000;
@@ -1420,7 +1427,7 @@ char status_msg_buf[4];
 
 rcl_publisher_t publisher_log;
 rcl_interfaces__msg__Log msgLog;
-char log_name_buf[16] = "ESP32";
+char log_name_buf[32] = "hyc.micro_ros_arduino_node";
 char log_msg_buf[64];
 
 #define LED_PIN RGB_BUILTIN
@@ -1448,6 +1455,14 @@ void subscription_callback(const void *msgin) {
   }
 }
 
+void publish_log(uint8_t level, const char* text) {
+  msgLog.level = level;
+  strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
+  msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
+  msgLog.msg.size = strlen(msgLog.msg.data);
+  RCSOFTCHECK(rcl_publish(&publisher_log, &msgLog, NULL));
+}
+
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
@@ -1464,14 +1479,6 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
     publish_log(rcl_interfaces__msg__Log__INFO, log_text);
 
   }
-}
-
-void publish_log(uint8_t level, const char* text) {
-  msgLog.level = level;
-  strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
-  msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
-  msgLog.msg.size = strlen(msgLog.msg.data);
-  RCSOFTCHECK(rcl_publish(&publisher_log, &msgLog, NULL));
 }
 
 void setup() {
@@ -1505,7 +1512,14 @@ void setup() {
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
 
-  // initialize log message buffers
+  // create publisher
+  RCCHECK(rclc_publisher_init_default(
+    &publisher,
+    &node,
+    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
+    "led_status"));
+  
+  // initialize log message
   rcl_interfaces__msg__Log__init(&msgLog);
   msgLog.name.data = log_name_buf;
   msgLog.name.size = strlen(log_name_buf);
@@ -1514,19 +1528,12 @@ void setup() {
   msgLog.msg.size = 0;
   msgLog.msg.capacity = sizeof(log_msg_buf);
 
-  // create publisher
-  RCCHECK(rclc_publisher_init_default(
-    &publisher,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-    "led_status"));
-  
   // create publisher for logging
   RCCHECK(rclc_publisher_init_default(
     &publisher_log,
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
-    "rosout"));
+    "/rosout"));
 
   // create timer
   const unsigned int timer_timeout = 1000;
