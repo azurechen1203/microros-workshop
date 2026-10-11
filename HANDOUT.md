@@ -202,7 +202,7 @@ By the end of the workshop, the folder will look like this:
    ros2 topic pub --once /hyc/led_control std_msgs/msg/Int32 "data: 0"
    ```
 
-> 🤔 Stopping the agent and pressing reset after every upload gets tedious. Exercise 10 will have these covered.
+> 🤔 Stopping the agent and pressing reset after every upload gets tedious. Exercise 9 will have these covered.
 
 <details>
 <summary>Solution (replace <code>hyc</code> with your namespace)</summary>
@@ -1803,256 +1803,11 @@ void loop() {
 
 </details>
 
-## Exercise 9: Wi-Fi Connection Debugging
-
-1. Save exercise8 as exercise9 in `firmware/`
-
-2. Add helper functions above `setup()`
-   ```cpp
-   bool connectWiFi(unsigned long timeout_ms = 15000) {
-     Serial.print("[WIFI] Connecting to SSID: ");
-     Serial.println(ssid);
-     WiFi.begin(ssid, password);
-     unsigned long start = millis();
-     while (WiFi.status() != WL_CONNECTED) {
-       if (millis() - start > timeout_ms) {
-         Serial.println("\n[WIFI] Connect timeout");
-         return false;
-       }
-       Serial.print("[");
-       Serial.print(WiFi.status());
-       Serial.print("]");
-       delay(500);
-     }
-     Serial.println("\n[WIFI] Connected. IP: " + WiFi.localIP().toString());
-     return true;
-   }
-
-   void pingAgent(unsigned long ping_interval_ms = 1000) {
-     Serial.print("[MICROROS] Pinging agent at ");
-     Serial.print(agent_ip);
-     Serial.print(":");
-     Serial.print(agent_port);
-     Serial.print(" ");
-     while (rmw_uros_ping_agent(ping_interval_ms, 1) != RMW_RET_OK) {
-       Serial.print(".");
-       delay(200);
-     }
-     Serial.println("\n[MICROROS] Agent found!");
-   }
-   ```
-
-3. Replace `set_microros_wifi_transports(ssid, password, agent_ip, agent_port);` in `setup()` with:
-   ```cpp
-   if (!connectWiFi()) {
-     Serial.println("[SETUP] WiFi failed. Halting.");
-     while (true)
-       delay(1000);
-   }
-
-   set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
-   pingAgent();
-   ```
-
-4. Upload the code
-   > 📢 Since the micro-ROS agent now connects over Wi-Fi, there's no need to stop and restart the agent when uploading code.
-
-5. Open the serial monitor and keep it open for the next step
-   ```
-   [WIFI] Connecting to SSID: microros_<your ID>
-   [6][0][0][0]
-   [WIFI] Connected. IP: 10.42.0.xx
-   [MICROROS] Pinging agent at 10.42.0.1:8888
-   [MICROROS] Agent found!
-   timer: LED is on
-   ```
-   The numbers in brackets are `WiFi.status()` codes:
-
-   | **`WiFi.status()`** | **Meaning** |
-   | --- | --- |
-   | `6` (DISCONNECTED) | Not connected. Normal once or twice at the start. If it repeats until `Connect timeout`, check that the hotspot is on, on 2.4 GHz, and that the SSID and password in `secrets.h` match. |
-   | `0` (IDLE) | Connecting. Shows just before `Connected`. |
-
-6. Press the `RESET` button with the micro-ROS agent and ROS 2 node still running
-
-<details>
-<summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
-
-```cpp
-#include <micro_ros_arduino.h>
-#include "secrets.h"
-
-#include <stdio.h>
-#include <rcl/rcl.h>
-#include <rcl/error_handling.h>
-#include <rclc/rclc.h>
-#include <rclc/executor.h>
-
-#include <std_msgs/msg/int32.h>
-#include <std_msgs/msg/string.h>
-
-rcl_subscription_t subscriber;
-std_msgs__msg__Int32 msg;
-rcl_publisher_t publisher;
-rclc_executor_t executor;
-rclc_support_t support;
-rcl_allocator_t allocator;
-rcl_node_t node;
-rcl_timer_t timer;
-
-std_msgs__msg__String status_msg;
-char status_msg_buf[4];
-
-#define LED_PIN RGB_BUILTIN
-
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
-
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
-    delay(100);
-  }
-}
-
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
-
-  int cmd = msg->data;
-
-  if (cmd == 0) {
-    digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
-    digitalWrite(LED_PIN, HIGH);
-  }
-}
-
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
-  RCLC_UNUSED(last_call_time);
-  if (timer != NULL) {
-
-    int led_state = digitalRead(LED_PIN);
-    const char* s = (led_state == HIGH) ? "on" : "off";
-    strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);
-
-    RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
-
-    Serial.print("timer: LED is ");
-    Serial.println(s);
-
-  }
-}
-
-bool connectWiFi(unsigned long timeout_ms = 15000) {
-  Serial.print("[WIFI] Connecting to SSID: ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED) {
-    if (millis() - start > timeout_ms) {
-      Serial.println("\n[WIFI] Connect timeout");
-      return false;
-    }
-    Serial.print("[");
-    Serial.print(WiFi.status());
-    Serial.print("]");
-    delay(500);
-  }
-  Serial.println("\n[WIFI] Connected. IP: " + WiFi.localIP().toString());
-  return true;
-}
-
-void pingAgent(unsigned long ping_interval_ms = 1000) {
-  Serial.print("[MICROROS] Pinging agent at ");
-  Serial.print(agent_ip);
-  Serial.print(":");
-  Serial.print(agent_port);
-  Serial.print(" ");
-  while (rmw_uros_ping_agent(ping_interval_ms, 1) != RMW_RET_OK) {
-    Serial.print(".");
-    delay(200);
-  }
-  Serial.println("\n[MICROROS] Agent found!");
-}
-
-void setup() {
-
-  Serial.begin(115200);
-
-  if (!connectWiFi()) {
-    Serial.println("[SETUP] WiFi failed. Halting.");
-    while (true)
-      delay(1000);
-  }
-
-  set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
-  pingAgent();
-
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);
-
-  delay(2000);
-
-  allocator = rcl_get_default_allocator();
-
-  //create init_options
-  rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
-  RCCHECK(rcl_init_options_init(&init_options, allocator));
-  RCCHECK(rcl_init_options_set_domain_id(&init_options, 17));
-  RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
-
-  // create node
-  RCCHECK(rclc_node_init_default(&node, "micro_ros_arduino_node", "hyc", &support));
-
-  // create subscriber
-  RCCHECK(rclc_subscription_init_default(
-    &subscriber,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-    "led_control"));
-
-  // store the string in status_msg_buf
-  status_msg.data.data = status_msg_buf;
-  status_msg.data.capacity = sizeof(status_msg_buf);
-  status_msg.data.size = 0;
-
-  // create publisher
-  RCCHECK(rclc_publisher_init_default(
-    &publisher,
-    &node,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-    "led_status"));
-
-  // create timer
-  const unsigned int timer_timeout = 1000;
-  RCCHECK(rclc_timer_init_default(
-    &timer,
-    &support,
-    RCL_MS_TO_NS(timer_timeout),
-    timer_callback));
-
-  // create executor
-  RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
-  RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
-  RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
-}
-
-void loop() {
-  delay(100);
-  RCCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
-}
-```
-
-</details>
-
-## Exercise 10: Reconnection Handling
+## Exercise 9: Reconnection Handling
 
 What if we don’t have access to the reset button on the board or can’t power cycle the microcontroller?
 
-1. Save as exercise10
+1. Save as exercise9
 
 2. Open the example file: **File > Examples > micro_ros_arduino > micro-ros_reconnection_example**
 
@@ -2186,38 +1941,6 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   }
 }
 
-bool connectWiFi(unsigned long timeout_ms = 15000) {
-  Serial.print("[WIFI] Connecting to SSID: ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED) {
-    if (millis() - start > timeout_ms) {
-      Serial.println("\n[WIFI] Connect timeout");
-      return false;
-    }
-    Serial.print("[");
-    Serial.print(WiFi.status());
-    Serial.print("]");
-    delay(500);
-  }
-  Serial.println("\n[WIFI] Connected. IP: " + WiFi.localIP().toString());
-  return true;
-}
-
-void pingAgent(unsigned long ping_interval_ms = 1000) {
-  Serial.print("[MICROROS] Pinging agent at ");
-  Serial.print(agent_ip);
-  Serial.print(":");
-  Serial.print(agent_port);
-  Serial.print(" ");
-  while (rmw_uros_ping_agent(ping_interval_ms, 1) != RMW_RET_OK) {
-    Serial.print(".");
-    delay(200);
-  }
-  Serial.println("\n[MICROROS] Agent found!");
-}
-
 bool create_entities() {
   allocator = rcl_get_default_allocator();
 
@@ -2284,14 +2007,7 @@ void setup() {
 
   Serial.begin(115200);
 
-  if (!connectWiFi()) {
-    Serial.println("[SETUP] WiFi failed. Halting.");
-    while (true)
-      delay(1000);
-  }
-
   set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
-  pingAgent();
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
