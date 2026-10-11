@@ -1585,45 +1585,50 @@ void loop() {
 
 ## Exercise 8: Wi-Fi Transport
 
-1. Configure hotspot
-   - Option a: GUI
-     Open **Settings > Wi-Fi > Click the three-dot icon > Turn on WiFi Hotspot**
-   - Option b: Network manager command line
+1. Turn on a Wi-Fi hotspot on your laptop
+   - Option a: GUI  
+     Open **Settings > Wi-Fi > Click the three-dot icon > Turn On Wi-Fi Hotspot**, then set the Network Name to `microros_<your ID>` and choose a password.
+   - Option b: command line, in a terminal on your laptop (not in the container)
      ```bash
-     nmcli device wifi hotspot ifname wlo1 ssid microros_esp32 password microros_esp32
+     nmcli device wifi hotspot ssid microros_<your ID> password <your password> band bg
      ```
+     `band bg` keeps the hotspot on 2.4 GHz, the only band the ESP32 supports.
 
-2. Get host IP from the terminal
+   Turning on the hotspot will disconnect your laptop from the Wi-Fi.
+
+2. Get the hotspot IP in a terminal on your laptop (not in the container)
    ```bash
    hostname -I
+   # Expected output includes 10.42.0.1 (172.17.0.1 belongs to Docker)
    ```
+   Use this address as `agent_ip` in `secrets.h` later on.
 
-3. Open file exercise4 and save the file as exercise8
+3. Save exercise4 as exercise8 in `firmware/` (because exercise4 has `Serial.print`)
 
-4. Create a new tab by clicking on the 3 horizontal dots at top/right of the window and name `secrets.h` to define credentials
+4. Create a tab named `secrets.h` (click `⋯` at the right of the tab bar, then **New Tab**)
    ```cpp
-   char* ssid = "microros_esp32";
-   char* password = "microros_esp32";
-   char* agent_ip = "10.42.0.1";
-   uint32_t agent_port = 8888;  // Default micro-ROS agent port
+   char ssid[] = "microros_<your ID>";
+   char password[] = "<your password>";
+   char agent_ip[] = "10.42.0.1";  // IP from step 2
+   uint32_t agent_port = 8888;     // default micro-ROS agent port
    ```
-   > 🔐 **Good Practice: Keep Credentials Separate**
+   > ⚠️ **Good Practice: Keep Credentials Separate**
    >
    > Store Wi-Fi credentials, API keys, passwords, and other sensitive information in a separate file instead of hardcoding them in main source files.
    >
    > **Remember:** Add the credentials file to `.gitignore` so it is never committed to Git. If others need to use the project, provide a template file (e.g. `secrets_example.h`) with placeholder values and instructions for creating their own local credentials file.
 
 5. Update firmware and transport
-   - **A.** Include credientials
+   - **A.** Include credentials
      ```cpp
      #include "secrets.h"
      ```
-   - **B.** Replace `set_microros_transports()` in `setup()` with
+   - **B.** Replace `set_microros_transports()` in `setup()` with:
      ```cpp
      set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
      ```
 
-6. Set domain ID (the same as previous exercise)
+6. Set your domain ID as in Exercise 7  
    Replace `RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));` with:
    ```cpp
    rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
@@ -1633,18 +1638,36 @@ void loop() {
    ```
 
 7. Upload the code
+   > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
 
-8. Run micro-ROS agent and ROS2 node  
-   Terminal #1:
+8. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, then press the `RESET` button:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
    ```
-   Terminal #2
+   Terminal #2:
    ```bash
    ros2 run led_demo led_control
    ```
+   Terminal #3:
+   ```bash
+   ros2 node list
+   # Expected output: /hyc/led_controller and /hyc/micro_ros_arduino_node
+   ```
 
-9. Open the serial monitor from Arduino IDE and set the baud rate to 115200
+9. Open the serial monitor (115200 baud) while the agent is running
+   > 🤔 **Think:** Why does the serial monitor now show clean output, unlike in Exercise 4?
+
+   <details>
+   <summary>Answers</summary>
+
+   micro-ROS now uses Wi-Fi, so the USB port only carries `Serial.print` output. The text no longer mixes with micro-ROS data.
+
+   </details>
+
+### Good to Know
+
+- To turn off the hotspot and reconnect to the Wi-Fi: switch it off in **Settings > Wi-Fi**, or find the hotspot's name with `nmcli connection show --active` and run `nmcli connection down <name>`.
 
 <details>
 <summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
