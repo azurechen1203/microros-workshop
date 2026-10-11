@@ -1803,11 +1803,11 @@ void loop() {
 
 </details>
 
-## Exercise 9: Wi-Fi Stability & Debugging
+## Exercise 9: Wi-Fi Connection Debugging
 
-1. Save as exercise9
+1. Save exercise8 as exercise9 in `firmware/`
 
-2. Add helper functions
+2. Add helper functions above `setup()`
    ```cpp
    bool connectWiFi(unsigned long timeout_ms = 15000) {
      Serial.print("[WIFI] Connecting to SSID: ");
@@ -1841,37 +1841,39 @@ void loop() {
      Serial.println("\n[MICROROS] Agent found!");
    }
    ```
-   | **`WiFi.status()`** | **Meaning** |
-   | --- | --- |
-   | `0` (IDLE) | Connection attempt in progress. If stuck here, the Wi-Fi hardware isn't initializing properly or the connection attempt hasn't completed yet. |
-   | `1`(NO_SSID_AVAIL) | ESP32 can't see the network at all. Points to an SSID mismatch or the hotspot not actually broadcasting on 2.4GHz (ESP32 doesn't support 5GHz). |
-   | `4` (CONNECT_FAILED) | Network found, but authentication or password is incorrect. |
-   | `6` (DISCONNECTED) | Was connected but got dropped. Could mean the hotspot was turned off or the ESP32 moved out of range. |
 
-3. Improve setup reliability
+3. Replace `set_microros_wifi_transports(ssid, password, agent_ip, agent_port);` in `setup()` with:
    ```cpp
-     if (!connectWiFi()) {
-       Serial.println("[SETUP] WiFi failed. Halting.");
-       while (true)
-         delay(1000);
-     }
+   if (!connectWiFi()) {
+     Serial.println("[SETUP] WiFi failed. Halting.");
+     while (true)
+       delay(1000);
+   }
 
-     set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
-     pingAgent();
+   set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
+   pingAgent();
    ```
 
 4. Upload the code
-   > 🗣 Since the micro-ROS agent now connects over Wi-Fi, there's no need to stop and restart the agent when uploading code.
+   > 📢 Since the micro-ROS agent now connects over Wi-Fi, there's no need to stop and restart the agent when uploading code.
 
-5. Run micro-ROS agent and ROS2 node  
-   Terminal #1:
-   ```bash
-   ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
+5. Open the serial monitor and keep it open for the next step
    ```
-   Terminal #2
-   ```bash
-   ros2 run led_demo led_control
+   [WIFI] Connecting to SSID: microros_<your ID>
+   [6][0][0][0]
+   [WIFI] Connected. IP: 10.42.0.xx
+   [MICROROS] Pinging agent at 10.42.0.1:8888
+   [MICROROS] Agent found!
+   timer: LED is on
    ```
+   The numbers in brackets are `WiFi.status()` codes:
+
+   | **`WiFi.status()`** | **Meaning** |
+   | --- | --- |
+   | `6` (DISCONNECTED) | Not connected. Normal once or twice at the start. If it repeats until `Connect timeout`, check that the hotspot is on, on 2.4 GHz, and that the SSID and password in `secrets.h` match. |
+   | `0` (IDLE) | Connecting. Shows just before `Connected`. |
+
+6. Press the `RESET` button with the micro-ROS agent and ROS 2 node still running
 
 <details>
 <summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
@@ -1929,11 +1931,11 @@ void subscription_callback(const void *msgin) {
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
+
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
 
@@ -2010,7 +2012,7 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
+
   // store the string in status_msg_buf
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
@@ -2030,7 +2032,6 @@ void setup() {
     &support,
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
-
 
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
