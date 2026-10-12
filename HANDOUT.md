@@ -1805,27 +1805,23 @@ void loop() {
 
 ## Exercise 9: Reconnection Handling
 
-What if we don’t have access to the reset button on the board or can’t power cycle the microcontroller?
+1. Save exercise8 as exercise9 in `firmware/`
 
-1. Save as exercise9
-
-2. Open the example file: **File > Examples > micro_ros_arduino > micro-ros_reconnection_example**
+2. Open **File > Examples > micro_ros_arduino > micro-ros_reconnection_example** to copy from
 
 3. Implement reconnection logic
-   - Include micro-ROS RMW library
+   - Include the micro-ROS RMW header
      ```cpp
      #include <rmw_microros/rmw_microros.h>
      ```
-   - Keep `RCSOFTCHECK(fn)` and replace original `RCCHECK(fn)` with new `RCCHECK(fn)` and `EXECUTE_EVERY_N_MS`
-   - Add enum state
-   - Create `create_entities()` and replace the content with those used to be in the setup. Remember to keep `return true;` in the end
+   - Keep `RCSOFTCHECK(fn)`, replace `RCCHECK(fn)` with the example's version, add `EXECUTE_EVERY_N_MS`, and remove `error_loop()`
+   - Add the `enum states` block
+   - Add `create_entities()` and move everything in `setup()` from `allocator = rcl_get_default_allocator();` to the last `rclc_executor_add_timer()` into it, followed by `return true;`
    - Right after `rclc_support_init_with_options()` inside `create_entities()`, add the following line
      ```cpp
-       // free init_options heap alloc now that support has copied what it needs
-       // prevents a leak on every reconnect
-       RCCHECK(rcl_init_options_fini(&init_options));
+     RCCHECK(rcl_init_options_fini(&init_options));
      ```
-   - Create `destroy_entities()` and replace the content with those entities that have been created
+   - Add `destroy_entities()`
      ```cpp
      void destroy_entities() {
        rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
@@ -1839,21 +1835,45 @@ What if we don’t have access to the reset button on the board or can’t power
        rclc_support_fini(&support);
      }
      ```
-   - Create the initial state in `setup()`
+   - Set the initial state at the end of `setup()`
      ```cpp
      state = WAITING_AGENT;
      ```
-   - Copy the switch case function to the `loop()`
+   - Replace everything in `loop()` with the example's `switch` block (not the `digitalWrite` block after it, which would override the LED)
+   - Print the state when it changes, at the end of `loop()`
+     ```cpp
+     static int last_state = -1;
+     if (state != last_state) {
+       const char *names[] = {"WAITING_AGENT", "AGENT_AVAILABLE", "AGENT_CONNECTED", "AGENT_DISCONNECTED"};
+       Serial.println(names[state]);
+       last_state = state;
+     }
+     ```
 
-4. Run micro-ROS agent and ROS2 node  
-   Terminal #1:
+4. Upload the code
+   > 📢 Since the micro-ROS agent now connects over Wi-Fi, there's no need to stop and restart the agent when uploading code.
+
+5. Run the micro-ROS agent and ROS 2 node  
+   Terminal #1, only if the agent was stopped:
    ```bash
    ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
    ```
-   Terminal #2:
+   Terminal #2, only if `led_control` was stopped:
    ```bash
    ros2 run led_demo led_control
    ```
+
+6. Open the serial monitor (115200 baud)
+
+7. Stop the agent in Terminal #1 with `Ctrl+C`, watch the serial monitor, then start the agent again  
+   The serial monitor shows `AGENT_DISCONNECTED`, then `WAITING_AGENT`, then `AGENT_AVAILABLE` and `AGENT_CONNECTED` once the agent is back. Test the LED in Terminal #2 without pressing `RESET`.
+
+8. Turn the hotspot off, watch the serial monitor, then turn it on again  
+   The serial monitor shows the same states once the board is back on the hotspot. Test the LED in Terminal #2 without pressing `RESET`.
+
+### Good to Know
+
+- The reconnection pattern works with any transport. The example itself uses serial (`set_microros_transports()`).
 
 <details>
 <summary>Solution (replace <code>hyc</code> and <code>17</code> with your namespace and ID)</summary>
@@ -1868,7 +1888,6 @@ What if we don’t have access to the reset button on the board or can’t power
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 #include <rmw_microros/rmw_microros.h>
-
 
 #include <std_msgs/msg/int32.h>
 #include <std_msgs/msg/string.h>
@@ -1905,13 +1924,6 @@ enum states {
   AGENT_CONNECTED,
   AGENT_DISCONNECTED
 } state;
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
-    delay(100);
-  }
-}
 
 void subscription_callback(const void *msgin) {
   const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
@@ -1950,7 +1962,7 @@ bool create_entities() {
   RCCHECK(rcl_init_options_set_domain_id(&init_options, 17));
   RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
   RCCHECK(rcl_init_options_fini(&init_options));
-  
+
   // create node
   RCCHECK(rclc_node_init_default(&node, "micro_ros_arduino_node", "hyc", &support));
 
@@ -1981,12 +1993,10 @@ bool create_entities() {
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
 
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 
   return true;
 }
@@ -2012,14 +2022,12 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
-  state = WAITING_AGENT;
-
-
   delay(2000);
+
+  state = WAITING_AGENT;
 }
 
 void loop() {
-  Serial.println(state);
   switch (state) {
     case WAITING_AGENT:
       EXECUTE_EVERY_N_MS(500, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_AVAILABLE : WAITING_AGENT;);
@@ -2028,7 +2036,7 @@ void loop() {
       state = (true == create_entities()) ? AGENT_CONNECTED : WAITING_AGENT;
       if (state == WAITING_AGENT) {
         destroy_entities();
-      };
+      }
       break;
     case AGENT_CONNECTED:
       EXECUTE_EVERY_N_MS(200, state = (RMW_RET_OK == rmw_uros_ping_agent(100, 1)) ? AGENT_CONNECTED : AGENT_DISCONNECTED;);
@@ -2042,6 +2050,13 @@ void loop() {
       break;
     default:
       break;
+  }
+
+  static int last_state = -1;
+  if (state != last_state) {
+    const char *names[] = {"WAITING_AGENT", "AGENT_AVAILABLE", "AGENT_CONNECTED", "AGENT_DISCONNECTED"};
+    Serial.println(names[state]);
+    last_state = state;
   }
 }
 ```
