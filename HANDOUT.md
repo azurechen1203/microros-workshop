@@ -5,7 +5,7 @@
 ## Getting Started
 
 1. Find the ESP32's serial port  
-      Plug in the board, then run the following command on your own machine:
+   Plug in the board, then run the following command on your own machine:
    ```bash
    ls /dev/ttyACM* /dev/ttyUSB*
    ```
@@ -109,13 +109,18 @@
    # Expected output includes: /hyc/micro_ros_arduino_subscriber
 
    ros2 topic echo /hyc/micro_ros_arduino_subscriber
-   ```  
+   ```
 
    Terminal #3:
    ```bash
    # publish 0 to turn LED off and 1 to turn back on
    ros2 topic pub --once /hyc/micro_ros_arduino_subscriber std_msgs/msg/Int32 "data: 0"
    ```
+
+### Good to Know
+
+- Namespaces are optional in your own projects. Without one, the node is `/micro_ros_arduino_node` and the topic is `/micro_ros_arduino_subscriber`. The namespace is added in front of both because the topic name has no leading `/`.
+- The workshop gives everyone their own namespace so that if laptops on the venue network discover each other, nodes and topics with the same name don't clash.
 
 ## File System Overview
 
@@ -135,8 +140,9 @@ By the end of the workshop, the folder will look like this:
     ├── firmware/                   # micro-ROS client (Arduino sketches)
     │   ├── exercise1/
     │   │   └── exercise1.ino
-    │   └── exercise2/
-    │       └── exercise2.ino
+    │   ├── ...
+    │   └── exercise9/
+    │       └── exercise9.ino
     ├── ros2_ws/                    # ROS 2 packages
     │   ├── src/
     │   │   └── led_demo/
@@ -163,7 +169,7 @@ By the end of the workshop, the folder will look like this:
 3. Update the subscription callback so only 0 and 1 change the LED
    ```cpp
    void subscription_callback(const void * msgin)
-   {  
+   {
      const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
      int cmd = msg->data;
@@ -188,7 +194,7 @@ By the end of the workshop, the folder will look like this:
 
 5. Upload the code
    > ⚠️ Remember to stop the micro-ROS agent in Terminal #1 with `Ctrl+C`, otherwise the Arduino IDE will show a "serial exception" error.
-   
+
    The LED turns red: no agent is running, so the board is in `error_loop()`.
 
 6. Run the micro-ROS agent and test it  
@@ -231,18 +237,17 @@ rcl_timer_t timer;
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
 void error_loop(){
   while(1){
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
 void subscription_callback(const void * msgin)
-{  
+{
   const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
-  
+
   int cmd = msg->data;
 
   if(cmd == 0){
@@ -254,10 +259,10 @@ void subscription_callback(const void * msgin)
 
 void setup() {
   set_microros_transports();
-  
+
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);  
-  
+  digitalWrite(LED_PIN, HIGH);
+
   delay(2000);
 
   allocator = rcl_get_default_allocator();
@@ -426,7 +431,7 @@ With the firmware confirmed working in Exercise 1, keep Terminal #1 for the micr
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
-   Terminal #2, if `led_control` isn't still running:
+   Terminal #2, only if `led_control` was stopped:
    ```bash
    ros2 run led_demo led_control
    ```
@@ -465,7 +470,6 @@ rcl_timer_t timer;
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
 void error_loop(){
   while(1){
     rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
@@ -473,18 +477,10 @@ void error_loop(){
   }
 }
 
-void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
-{  
-  RCLC_UNUSED(last_call_time);
-  if (timer != NULL) {
-    status_msg.data = (digitalRead(LED_PIN) == HIGH) ? 1 : 0;
-    RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
-  }
-}
-
 void subscription_callback(const void * msgin)
-{  
+{
   const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+
   int cmd = msg->data;
 
   if(cmd == 0){
@@ -494,12 +490,21 @@ void subscription_callback(const void * msgin)
   }
 }
 
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
+  RCLC_UNUSED(last_call_time);
+  if (timer != NULL) {
+    status_msg.data = (digitalRead(LED_PIN) == HIGH) ? 1 : 0;
+    RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
+  }
+}
+
 void setup() {
   set_microros_transports();
-  
+
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH);  
-  
+  digitalWrite(LED_PIN, HIGH);
+
   delay(2000);
 
   allocator = rcl_get_default_allocator();
@@ -523,7 +528,7 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_status"));
-    
+
   // create timer
   const unsigned int timer_timeout = 1000;
   RCCHECK(rclc_timer_init_default(
@@ -536,7 +541,6 @@ void setup() {
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -565,14 +569,13 @@ void loop() {
 3. Update `timer_callback()`
    ```cpp
    void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
-   {  
+   {
      RCLC_UNUSED(last_call_time);
      if (timer != NULL) {
-
        int led_state = digitalRead(LED_PIN);
        const char* s = (led_state == HIGH) ? "on" : "off";
        strcpy(status_msg.data.data, s);
-       status_msg.data.size = strlen(s);  
+       status_msg.data.size = strlen(s);
 
        RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
      }
@@ -581,7 +584,7 @@ void loop() {
 
 4. In `setup()`, set up the string buffer before the publisher and change the publisher type to String
    ```cpp
-     // store the string in status_msg_buf
+     // initialize status message
      status_msg.data.data = status_msg_buf;
      status_msg.data.capacity = sizeof(status_msg_buf);
      status_msg.data.size = 0;
@@ -610,7 +613,6 @@ void loop() {
    ```python
        def __init__(self):
            super().__init__('led_controller', namespace='hyc')
-
            self.publisher_ = self.create_publisher(Int32, 'led_control', 10)
            self.subscriber_ = self.create_subscription(String, 'led_status', self.status_callback, 1)
            self.latest_status = None
@@ -675,37 +677,36 @@ char status_msg_buf[4];
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+void error_loop(){
+  while(1){
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
-
   }
 }
 
@@ -731,8 +732,8 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
-  // store the string in status_msg_buf
+
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -752,12 +753,10 @@ void setup() {
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
 
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -779,10 +778,10 @@ void loop() {
 
 3. Print LED state in `timer_callback()`
    ```cpp
-   void timer_callback(rcl_timer_t* timer, int64_t last_call_time) {
+   void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+   {
      RCLC_UNUSED(last_call_time);
      if (timer != NULL) {
-
        int led_state = digitalRead(LED_PIN);
        const char* s = (led_state == HIGH) ? "on" : "off";
        strcpy(status_msg.data.data, s);
@@ -804,7 +803,7 @@ void loop() {
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
-   Terminal #2:
+   Terminal #2, only if `led_control` was stopped:
    ```bash
    ros2 run led_demo led_control
    ```
@@ -853,45 +852,43 @@ char status_msg_buf[4];
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+void error_loop(){
+  while(1){
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
 
     Serial.print("timer: LED is ");
     Serial.println(s);
-
   }
 }
 
 void setup() {
-
   Serial.begin(115200);
 
   set_microros_transports();
@@ -915,8 +912,8 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
-  // store the string in status_msg_buf
+
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -936,12 +933,10 @@ void setup() {
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
 
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -1003,34 +998,34 @@ char status_msg_buf[4];
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+void error_loop(){
+  while(1){
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
 
@@ -1040,7 +1035,6 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
 }
 
 void setup() {
-
   Serial1.begin(115200, SERIAL_8N1, 7, 32);
 
   set_microros_transports();
@@ -1064,8 +1058,8 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
-  // store the string in status_msg_buf
+
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1085,12 +1079,10 @@ void setup() {
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
 
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -1117,10 +1109,12 @@ void loop() {
    char log_name_buf[32] = "hyc.micro_ros_arduino_node";
    char log_msg_buf[64];
    ```
+   > 📢 Replace `hyc` in the log name with your own namespace.
 
 4. Create the log helper function above `timer_callback()`
    ```cpp
-   void publish_log(uint8_t level, const char* text) {
+   void publish_log(uint8_t level, const char* text)
+   {
      msgLog.level = level;
      strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
      msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
@@ -1131,10 +1125,10 @@ void loop() {
 
 5. Log LED status in `timer_callback()`
    ```cpp
-   void timer_callback(rcl_timer_t* timer, int64_t last_call_time) {
+   void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+   {
      RCLC_UNUSED(last_call_time);
      if (timer != NULL) {
-
        int led_state = digitalRead(LED_PIN);
        const char* s = (led_state == HIGH) ? "on" : "off";
        strcpy(status_msg.data.data, s);
@@ -1179,7 +1173,7 @@ void loop() {
    ```bash
    ros2 run micro_ros_agent micro_ros_agent serial --dev /dev/ttyACM0
    ```
-   Terminal #2:
+   Terminal #2, only if `led_control` was stopped:
    ```bash
    ros2 run led_demo led_control
    ```
@@ -1237,26 +1231,28 @@ char log_msg_buf[64];
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+void error_loop(){
+  while(1){
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void publish_log(uint8_t level, const char* text) {
+void publish_log(uint8_t level, const char* text)
+{
   msgLog.level = level;
   strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
   msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
@@ -1264,21 +1260,20 @@ void publish_log(uint8_t level, const char* text) {
   RCSOFTCHECK(rcl_publish(&publisher_log, &msgLog, NULL));
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
 
     char log_text[32];
     snprintf(log_text, sizeof(log_text), "LED status: %s", s);
     publish_log(rcl_interfaces__msg__Log__INFO, log_text);
-
   }
 }
 
@@ -1304,8 +1299,8 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
-  // store the string in status_msg_buf
+
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1316,7 +1311,7 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
-  
+
   // initialize log message
   rcl_interfaces__msg__Log__init(&msgLog);
   msgLog.name.data = log_name_buf;
@@ -1341,12 +1336,10 @@ void setup() {
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
 
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -1459,27 +1452,28 @@ char log_msg_buf[64];
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+void error_loop(){
+  while(1){
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void publish_log(uint8_t level, const char* text) {
+void publish_log(uint8_t level, const char* text)
+{
   msgLog.level = level;
   strncpy(msgLog.msg.data, text, msgLog.msg.capacity - 1);
   msgLog.msg.data[msgLog.msg.capacity - 1] = '\0';
@@ -1487,21 +1481,20 @@ void publish_log(uint8_t level, const char* text) {
   RCSOFTCHECK(rcl_publish(&publisher_log, &msgLog, NULL));
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
 
     char log_text[32];
     snprintf(log_text, sizeof(log_text), "LED status: %s", s);
     publish_log(rcl_interfaces__msg__Log__INFO, log_text);
-
   }
 }
 
@@ -1530,8 +1523,8 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
-  // store the string in status_msg_buf
+
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1542,7 +1535,7 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
     "led_status"));
-  
+
   // initialize log message
   rcl_interfaces__msg__Log__init(&msgLog);
   msgLog.name.data = log_name_buf;
@@ -1567,12 +1560,10 @@ void setup() {
     RCL_MS_TO_NS(timer_timeout),
     timer_callback));
 
-
   // create executor
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -1645,7 +1636,7 @@ void loop() {
    ```bash
    ros2 run micro_ros_agent micro_ros_agent udp4 --port 8888
    ```
-   Terminal #2:
+   Terminal #2, only if `led_control` was stopped:
    ```bash
    ros2 run led_demo led_control
    ```
@@ -1663,7 +1654,7 @@ void loop() {
 
    micro-ROS now uses Wi-Fi, so the USB port only carries `Serial.print` output. The text no longer mixes with micro-ROS data.
 
-   </details>
+   </details><br>
 
 ### Good to Know
 
@@ -1702,45 +1693,43 @@ char status_msg_buf[4];
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){error_loop();}}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
 
-
-void error_loop() {
-  while (1) {
-    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);
+void error_loop(){
+  while(1){
+    rgbLedWrite(LED_PIN, RGB_BRIGHTNESS, 0, 0);  // Red
     delay(100);
   }
 }
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-    
     int led_state = digitalRead(LED_PIN);
     const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
-    status_msg.data.size = strlen(s);  
+    status_msg.data.size = strlen(s);
 
     RCSOFTCHECK(rcl_publish(&publisher, &status_msg, NULL));
 
     Serial.print("timer: LED is ");
     Serial.println(s);
-
   }
 }
 
 void setup() {
-
   Serial.begin(115200);
 
   set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
@@ -1767,8 +1756,8 @@ void setup() {
     &node,
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
-  
-  // store the string in status_msg_buf
+
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -1792,7 +1781,6 @@ void setup() {
   RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
   RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
-
 }
 
 void loop() {
@@ -1814,18 +1802,31 @@ void loop() {
      ```cpp
      #include <rmw_microros/rmw_microros.h>
      ```
-   - Keep `RCSOFTCHECK(fn)`, replace `RCCHECK(fn)` with the example's version, add `EXECUTE_EVERY_N_MS`, and remove `error_loop()`
-   - Add the `enum states` block
-   - Add `create_entities()` and move everything in `setup()` from `allocator = rcl_get_default_allocator();` to the last `rclc_executor_add_timer()` into it, followed by `return true;`
+   - In `RCCHECK(fn)`, replace `error_loop();` with `return false;`, then remove the `error_loop()` function
+     ```cpp
+     #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){return false;}}
+     ```
+   - Copy `EXECUTE_EVERY_N_MS` from the example
+   - Copy the `enum states` block from the example
+   - Create `create_entities()` and move everything in `setup()` from `allocator = rcl_get_default_allocator();` to the last `rclc_executor_add_timer()` into it
+     ```cpp
+     bool create_entities()
+     {
+       // code moved from setup()
+
+       return true;
+     }
+     ```
    - Right after `rclc_support_init_with_options()` inside `create_entities()`, add the following line
      ```cpp
      RCCHECK(rcl_init_options_fini(&init_options));
      ```
    - Add `destroy_entities()`
      ```cpp
-     void destroy_entities() {
-       rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
-       (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
+     void destroy_entities()
+     {
+       rmw_context_t * rmw_context = rcl_context_get_rmw_context(&support.context);
+       (void) rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
        rcl_publisher_fini(&publisher, &node);
        rcl_subscription_fini(&subscriber, &node);
@@ -1844,7 +1845,7 @@ void loop() {
      ```cpp
      static int last_state = -1;
      if (state != last_state) {
-       const char *names[] = {"WAITING_AGENT", "AGENT_AVAILABLE", "AGENT_CONNECTED", "AGENT_DISCONNECTED"};
+       const char* names[] = {"WAITING_AGENT", "AGENT_AVAILABLE", "AGENT_CONNECTED", "AGENT_DISCONNECTED"};
        Serial.println(names[state]);
        last_state = state;
      }
@@ -1905,18 +1906,16 @@ std_msgs__msg__String status_msg;
 char status_msg_buf[4];
 
 #define LED_PIN RGB_BUILTIN
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){return false;}}
 
-#define EXECUTE_EVERY_N_MS(MS, X) \
-  do { \
-    static volatile int64_t init = -1; \
-    if (init == -1) { init = uxr_millis(); } \
-    if (uxr_millis() - init > MS) { \
-      X; \
-      init = uxr_millis(); \
-    } \
-  } while (0)
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){return false;}}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){}}
+
+
+#define EXECUTE_EVERY_N_MS(MS, X)  do { \
+  static volatile int64_t init = -1; \
+  if (init == -1) { init = uxr_millis();} \
+  if (uxr_millis() - init > MS) { X; init = uxr_millis();} \
+} while (0)\
 
 enum states {
   WAITING_AGENT,
@@ -1925,24 +1924,25 @@ enum states {
   AGENT_DISCONNECTED
 } state;
 
-void subscription_callback(const void *msgin) {
-  const std_msgs__msg__Int32 *msg = (const std_msgs__msg__Int32 *)msgin;
+void subscription_callback(const void * msgin)
+{
+  const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 
   int cmd = msg->data;
 
-  if (cmd == 0) {
+  if(cmd == 0){
     digitalWrite(LED_PIN, LOW);
-  } else if (cmd == 1) {
+  } else if(cmd == 1){
     digitalWrite(LED_PIN, HIGH);
   }
 }
 
-void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
   RCLC_UNUSED(last_call_time);
   if (timer != NULL) {
-
     int led_state = digitalRead(LED_PIN);
-    const char *s = (led_state == HIGH) ? "on" : "off";
+    const char* s = (led_state == HIGH) ? "on" : "off";
     strcpy(status_msg.data.data, s);
     status_msg.data.size = strlen(s);
 
@@ -1953,7 +1953,8 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   }
 }
 
-bool create_entities() {
+bool create_entities()
+{
   allocator = rcl_get_default_allocator();
 
   //create init_options
@@ -1973,7 +1974,7 @@ bool create_entities() {
     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
     "led_control"));
 
-  // store the string in status_msg_buf
+  // initialize status message
   status_msg.data.data = status_msg_buf;
   status_msg.data.capacity = sizeof(status_msg_buf);
   status_msg.data.size = 0;
@@ -2001,9 +2002,10 @@ bool create_entities() {
   return true;
 }
 
-void destroy_entities() {
-  rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
-  (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
+void destroy_entities()
+{
+  rmw_context_t * rmw_context = rcl_context_get_rmw_context(&support.context);
+  (void) rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
 
   rcl_publisher_fini(&publisher, &node);
   rcl_subscription_fini(&subscriber, &node);
@@ -2014,7 +2016,6 @@ void destroy_entities() {
 }
 
 void setup() {
-
   Serial.begin(115200);
 
   set_microros_wifi_transports(ssid, password, agent_ip, agent_port);
@@ -2054,7 +2055,7 @@ void loop() {
 
   static int last_state = -1;
   if (state != last_state) {
-    const char *names[] = {"WAITING_AGENT", "AGENT_AVAILABLE", "AGENT_CONNECTED", "AGENT_DISCONNECTED"};
+    const char* names[] = {"WAITING_AGENT", "AGENT_AVAILABLE", "AGENT_CONNECTED", "AGENT_DISCONNECTED"};
     Serial.println(names[state]);
     last_state = state;
   }
